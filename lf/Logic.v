@@ -143,7 +143,15 @@ Qed.
 Example and_exercise :
   forall n m : nat, n + m = 0 -> n = 0 /\ m = 0.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m H. split.
+  - destruct n as [| n']. 
+    + reflexivity.
+    + discriminate.
+  - rewrite -> add_comm in H.
+    destruct m as [| m'].
+    + reflexivity.
+    + discriminate.
+Qed.
 (** [] *)
 
 (** So much for proving conjunctive statements.  To go in the other
@@ -222,7 +230,10 @@ Proof.
 Lemma proj2 : forall P Q : Prop,
   P /\ Q -> Q.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q HPQ.
+  destruct HPQ as [_ HQ].
+  apply HQ.
+Qed.
 (** [] *)
 
 (** Finally, we sometimes need to rearrange the order of conjunctions
@@ -236,7 +247,8 @@ Proof.
   intros P Q [HP HQ].
   split.
     - (* left *) apply HQ.
-    - (* right *) apply HP.  Qed.
+    - (* right *) apply HP.
+Qed.
 
 (** **** Exercise: 2 stars, standard (and_assoc)
 
@@ -248,7 +260,10 @@ Theorem and_assoc : forall P Q R : Prop,
   P /\ (Q /\ R) -> (P /\ Q) /\ R.
 Proof.
   intros P Q R [HP [HQ HR]].
-  (* FILL IN HERE *) Admitted.
+  split.
+    - split. apply HP. apply HQ.
+    - apply HR.
+Qed.
 (** [] *)
 
 (** Finally, the infix notation [/\] is actually just syntactic sugar for
@@ -312,14 +327,23 @@ Qed.
 Lemma mult_is_O :
   forall n m, n * m = 0 -> n = 0 \/ m = 0.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros [|n'] m H.
+  - left. reflexivity. 
+  - right. 
+    destruct m as [| m'].
+    + reflexivity.
+    + discriminate.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star, standard (or_commut) *)
 Theorem or_commut : forall P Q : Prop,
   P \/ Q  -> Q \/ P.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q [HP | HQ].
+  - right. apply HP.
+  - left. apply HQ.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -378,7 +402,9 @@ Proof.
 Theorem not_implies_our_not : forall (P:Prop),
   ~ P -> (forall (Q:Prop), P -> Q).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P NP. unfold not in NP.
+  intros Q HP. destruct NP. apply HP.
+Qed.
 (** [] *)
 
 (** Inequality is a very common form of negated statement, so there is a
@@ -447,14 +473,19 @@ Definition manual_grade_for_double_neg_inf : option (nat*string) := None.
 Theorem contrapositive : forall (P Q : Prop),
   (P -> Q) -> (~Q -> ~P).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q H. unfold not. 
+  intros G. intros G'. apply H in G'. apply G in G'.
+  apply G'.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star, standard (not_both_true_and_false) *)
 Theorem not_both_true_and_false : forall P : Prop,
   ~ (P /\ ~P).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P. unfold not. intros H. destruct H.
+  apply H0 in H. apply H.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star, advanced (informal_not_PNP)
@@ -479,7 +510,11 @@ Definition manual_grade_for_informal_not_PNP : option (nat*string) := None.
 Theorem de_morgan_not_or : forall (P Q : Prop),
     ~ (P \/ Q) -> ~P /\ ~Q.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q. unfold not.
+  intros H. split.
+    + intros HP. destruct H. left. apply HP. 
+    + intros HQ. destruct H. right. apply HQ.
+Qed.
 (** [] *)
 
 (** Since inequality involves a negation, it also requires a little
@@ -640,7 +675,21 @@ Proof.
 Theorem or_distributes_over_and : forall P Q R : Prop,
   P \/ (Q /\ R) <-> (P \/ Q) /\ (P \/ R).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q R. split.
+  - split.
+    + destruct H as [HP | [HQ HR]].
+      * left. apply HP.
+      * right. apply HQ.
+    + destruct H as [HP | [HQ HR]].
+      * left. apply HP.
+      * right. apply HR.
+  - intros [H1 H2].
+    destruct H1 as [H11 | H12].
+    + left. apply H11.
+    + destruct H2 as [H21 | H22].
+      * left. apply H21.
+      * right. split. apply H12. apply H22.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -750,7 +799,9 @@ Proof.
 Theorem dist_not_exists : forall (X:Type) (P : X -> Prop),
   (forall x, P x) -> ~ (exists x, ~ P x).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X P H. unfold not. intros [m Hm].
+  apply Hm in H. apply H.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard (dist_exists_or)
@@ -761,7 +812,15 @@ Proof.
 Theorem dist_exists_or : forall (X:Type) (P Q : X -> Prop),
   (exists x, P x \/ Q x) <-> (exists x, P x) \/ (exists x, Q x).
 Proof.
-   (* FILL IN HERE *) Admitted.
+  intros X P Q. split.
+  - intros [m Hm].
+    destruct Hm as [HmP | HmQ].
+    + left. exists m. apply HmP.
+    + right. exists m. apply HmQ.
+  - intros [[m HmP] | [m HmQ]].
+    + exists m. left. apply HmP.
+    + exists m. right. apply HmQ.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard, optional (leb_plus_exists) *)
@@ -858,8 +917,17 @@ Theorem In_map_iff :
          exists x, f x = y /\ In x l.
 Proof.
   intros A B f l y. split.
-  { induction l as [|x l' IHl'].
-  (* FILL IN HERE *) Admitted.
+  - induction l as [|x' l' IHl'].
+    + simpl. intros [].
+    + simpl. intros [H | H].
+      * exists x'. split. apply H. left. reflexivity.
+      * apply IHl' in H. destruct H as [m [Hm1 Hm2]].
+        exists m. split. apply Hm1. right. apply Hm2.
+  - intros [m [Hm1 Hm2]].
+    rewrite <- Hm1.
+    apply In_map.
+    apply Hm2.
+Qed.
 (** [] *)
 
 (** **** Exercise: 2 stars, standard (In_app_iff) *)
@@ -1349,12 +1417,33 @@ Qed.
 Theorem andb_true_iff : forall b1 b2:bool,
   b1 && b2 = true <-> b1 = true /\ b2 = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b1 b2. unfold andb. split.
+  - intros H.
+    destruct b1.
+    + split. reflexivity. apply H.
+    + discriminate.
+  - intros [H1 H2].
+    destruct b1.
+    + apply H2.
+    + discriminate.
+Qed.
 
 Theorem orb_true_iff : forall b1 b2,
   b1 || b2 = true <-> b1 = true \/ b2 = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b1 b2. unfold orb. split.
+  - intros H.
+    destruct b1.
+    + left. reflexivity.
+    + right. apply H.
+  - intros [H1 | H2].
+    + destruct b1.
+      * reflexivity.
+      * discriminate.
+    + destruct b1.
+      * reflexivity.
+      * apply H2.
+Qed.
 (** [] *)
 
 (** **** Exercise: 1 star, standard (eqb_neq)
