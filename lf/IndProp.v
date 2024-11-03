@@ -3010,8 +3010,23 @@ Lemma app_ne : forall (a : ascii) s re0 re1,
 Proof.
   intros.
   split.
-  - intros. inversion H. destruct s4.
-    left. split. apply H3. simpl. apply H4.
+  - (* 
+      a :: s = x ++ y
+      x =~ re0; y =~re1
+    *) 
+    intros. inversion H. 
+    destruct s4. 
+    + (* 
+        x = []:  
+        a :: s = x ++ y = y =~ re1
+      *) 
+      left. split. apply H3. simpl. apply H4.
+    + (* 
+        a :: s = (h :: x') ++ y; (h :: x') =~ re0; y =~ re1: 
+        h = a, s = x' ++ y
+        Then set s0 = x', s1 = y.
+        a :: s0 = h :: x' =~ re0; s1 = y =~ re1
+      *) 
     right. inversion H1.
     exists s4. exists s5. 
     split. reflexivity. 
@@ -3019,8 +3034,19 @@ Proof.
     apply H4.
   - intros.
     destruct H as [[HL0 HL1] | HR].
-    + apply MApp with (s1 := []). apply HL0. apply HL1.
-    + destruct HR as [s0 [s1 [HR1 [HR2 HR3]]]].
+    + (* 
+        [ ] =~ re0; a :: s =~ re1: 
+        By MApp, 
+        a :: s =~ App re0 re1
+      *)
+      apply MApp with (s1 := []). apply HL0. apply HL1.
+    + (* 
+        s = s0 ++ s1 /\ a :: s0 =~ re0 /\ s1 =~ re1:
+        a :: s = a :: (s0 ++ s1) = (a :: s0) ++ s1.
+        Note that (a :: s0) =~ re0 and s1 =~ re1, 
+        a :: s =~ App re0 re1
+      *)
+      destruct HR as [s0 [s1 [HR1 [HR2 HR3]]]].
       rewrite HR1. 
       assert (T: a :: s0 ++ s1 = (a :: s0) ++ s1). { reflexivity. }
       rewrite T.
@@ -3062,6 +3088,7 @@ Qed.
 Lemma star_ne : forall (a : ascii) s re,
   a :: s =~ Star re <->
   exists s0 s1, s = s0 ++ s1 /\ a :: s0 =~ re /\ s1 =~ Star re.
+Proof.
 Admitted.
 
 (** The definition of our regex matcher will include two fixpoint
@@ -3075,9 +3102,14 @@ Definition refl_matches_eps m :=
 
     Complete the definition of [match_eps] so that it tests if a given
     regex matches the empty string: *)
-Fixpoint match_eps (re: reg_exp ascii) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
-(** [] *)
+Fixpoint match_eps (re: reg_exp ascii) : bool := match re with 
+| EmptySet => false
+| EmptyStr => true
+| Char x => false
+| App re1 re2 => (match_eps re1) && (match_eps re2)
+| Union re1 re2 => (match_eps re1) || (match_eps re2)
+| Star re => true
+end.
 
 (** **** Exercise: 3 stars, standard, optional (match_eps_refl)
 
@@ -3086,7 +3118,32 @@ Fixpoint match_eps (re: reg_exp ascii) : bool
     [ReflectT] and [ReflectF].) *)
 Lemma match_eps_refl : refl_matches_eps match_eps.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  unfold refl_matches_eps. intros re.
+  induction re.
+  - simpl. apply ReflectF. intros contra. inversion contra.
+  - simpl. apply ReflectT. apply MEmpty.
+  - simpl. apply ReflectF. intros contra. inversion contra.
+  - simpl. inversion IHre1.
+    + inversion IHre2.
+      * simpl. apply ReflectT. apply MApp with (s1 := []) (s2 := []).
+        apply H0. apply H2.
+      * simpl. apply ReflectF. intros contra. inversion contra. 
+        destruct s5. 
+        { apply H2 in H7. apply H7. }
+        { destruct s4. simpl. discriminate. discriminate H3. }
+    + simpl. apply ReflectF. intros contra. inversion contra. 
+        destruct s4.
+        { apply H0 in H4. apply H4. }
+        { discriminate. }
+  - simpl. inversion IHre1.
+    + simpl. apply ReflectT. apply MUnionL. apply H0.
+    + inversion IHre2. 
+      * simpl. apply ReflectT. apply MUnionR. apply H2.
+      * simpl. apply ReflectF. intros contra. inversion contra.
+        { apply H0 in H5. apply H5. }
+        { apply H2 in H5. apply H5. }
+  - simpl. apply ReflectT. apply MStar0.
+Qed.
 (** [] *)
 
 (** We'll define other functions that use [match_eps]. However, the
