@@ -2020,7 +2020,7 @@ Proof.
       pumping_constant re1 <= length s1 -> 
       { 
         exists x y z s.t.
-        s1 = x ++ y ++ s4 /\
+        s1 = x ++ y ++ z /\
         y != [ ] /\
         (forall m : nat, x ++ napp m y ++ z =~ re1)
       }
@@ -2030,7 +2030,7 @@ Proof.
         exists x y z s.t.
         s2 = x ++ y ++ z /\
         y !=  [ ] /\
-        (forall m : nat, x ++ napp m y ++ z =~ re1)
+        (forall m : nat, x ++ napp m y ++ z =~ re2)
       }
 
       Prove that: pumping_constant (App re1 re2) <= length s1 + length s2 -> 
@@ -2059,7 +2059,7 @@ Proof.
       
       Then the desired x y z for s1 ++ s2 should be x' y' (z' ++ s2)
 
-      ii) Similar.
+      ii) Similar to i).
     *)
     simpl. intros H.
     rewrite app_length in H.
@@ -2102,7 +2102,7 @@ Proof.
       exists x y z : list T,
       s1 = x ++ y ++ z /\
       y <> [ ] /\
-      forall m : nat, x ++ napp m y ++ z =~ Union re1 re2)
+      forall m : nat, x ++ napp m y ++ z =~ Union re1 re2
     }
 
     Proof Scratch: 
@@ -2168,7 +2168,7 @@ Proof.
       IH2: pumping_constant (Star re) <= length s2 ->
       { 
         exists x y z,
-        s1 = x ++ y ++ z /\
+        s2 = x ++ y ++ z /\
         y <> [ ] /\
         (forall m : nat, x ++ napp m y ++ z =~ Star re)
       }
@@ -2176,7 +2176,7 @@ Proof.
       Prove that: pumping_constant (Star re) <= length (s1 ++ s2) ->
       { 
         exists x y z,
-        s1 = x ++ y ++ z /\
+        s1 ++ s2  = x ++ y ++ z /\
         y <> [ ] /\
         (forall m : nat, x ++ napp m y ++ z =~ Star re)
 
@@ -2224,11 +2224,49 @@ Proof.
     as [ | x | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
        | s1 re1 re2 Hmatch IH | re1 s2 re2 Hmatch IH
        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2 ].
-  - (* MEmpty *)
+  - (* MEmpty: same as weak pumping *)
     simpl. intros contra. inversion contra.
-  - (* MChar *)
+  - (* MChar: same as weak pumping *)
     simpl. intros contra. inversion contra. inversion H0.
-  - (* MApp *)
+  - (*
+    [MApp]
+  
+    Hmatch1: s1 =~ re1
+    Hmatch2: s2 =~ re2
+
+    IH1: For re1 and re2 s.t. 
+    pumping_constant re1 <= length s1 -> 
+    { 
+      exists x y z s.t.
+      s1 = x ++ y ++ z /\
+      y != [ ] /\
+      length x + length y <= pumping_constant re1 /\
+      (forall m : nat, x ++ napp m y ++ z =~ re1)
+    }
+  
+    IH2: pumping_constant re2 <= length s2 -> 
+    {  
+      exists x y z s.t.
+      s2 = x ++ y ++ z /\
+      y !=  [ ] /\
+      length x + length y <= pumping_constant re2 /\
+      (forall m : nat, x ++ napp m y ++ z =~ re2)
+    }
+
+    Prove that: pumping_constant (App re1 re2) <= length s1 + length s2 -> 
+    { 
+      exists x y z s.t.
+      s1 ++ s2 = x ++ y ++ z /\
+      y != [ ] /\
+      length x + length y <= pumping_constant re1 + pumping_constant re2/\
+      (forall m : nat, x ++ napp m y ++ z =~ App re1 re2)
+    }
+
+    Proof Scratch: 
+    Note that pumping_constant (App re1 re2) = pumping_constant re1 + pumping_constant re2 
+        <= length s1 + length s2.
+    We can get pumping_constant re1 <= length s1 or pumping_constant re2 <= length s2.
+    *)
     simpl. intros H.
     rewrite app_length in H.
     apply add_le_cases in H. 
@@ -2238,39 +2276,62 @@ Proof.
       split. rewrite H2. rewrite <- app_assoc. rewrite <- app_assoc. reflexivity.
       split. apply H3.
       split. apply le_plus_trans. apply H4.
-      intros m. rewrite app_assoc. rewrite app_assoc. 
-      rewrite <- app_assoc with (l := x) (m := napp m y) (n := z).
-      apply MApp with (s1 := (x ++ napp m y ++ z))
-                      (re1 := re1)
-                      (s2 := s2)
-                      (re2 := re2).
-      apply H5. apply Hmatch2.
-    + apply IH2 in H2.
+      intros m. rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc with (m := napp m y).
+      apply MApp with (s1 := (x ++ napp m y ++ z)). apply H5. apply Hmatch2.
+    + (* pumping_constant re2 <= length s2. 
+
+        { 
+          exists x' y' z' s.t.
+          s2 = x' ++ y' ++ y' /\
+          y' != [ ] /\
+          length x' + length y' <= pumping_constant re2 /\
+          (forall m : nat, x' ++ napp m y' ++ z' =~ re2)
+        }
+        
+        To satisfy the condition length x + length y <= pumping_constant re1 + pumping_constant re2, 
+        here we need to a case analysis on whether pumping_constant re1 <= length s1.
+      *)
+      apply IH2 in H2.
       destruct (lt_ge_cases (length s1) (pumping_constant re1)) as [E1 | E1].
       apply n_lt_m__n_le_m in E1. 
-      * destruct H2 as [x [y [z [H1 [H3 [H4 H5]]]]]].
+      * (* 
+          length s1 < pumping_constant re1.
+
+          Then the desired x y z could be (s1 ++ x‘) (y’) (z‘).
+
+          length s1 + length x + length y <= pumping_constant re1 + pumping_constant re2
+        *)
+        destruct H2 as [x [y [z [H1 [H3 [H4 H5]]]]]].
         exists (s1 ++ x). exists (y). exists (z).
         split. rewrite H1. rewrite <- app_assoc. reflexivity.
         split. apply H3.
         split. rewrite app_length.
         apply (le_trans (length s1 + length x + length y) (length s1 + pumping_constant re2) (pumping_constant re1 + pumping_constant re2)).
-        rewrite <- add_assoc. apply plus_le_compat_l. apply H4.
-        apply plus_le_compat_r. apply E1. 
+        rewrite <- add_assoc. apply plus_le_compat_l. apply H4. apply plus_le_compat_r. apply E1. 
         intros m. rewrite <- app_assoc.  
-        apply MApp with (s1 := s1) (re1 := re1) (s2 := (x ++ napp m y ++ z)) (re2 := re2).
-        apply Hmatch1. apply H5.
-      * apply IH1 in E1. 
+        apply MApp with (s2 := (x ++ napp m y ++ z)). apply Hmatch1. apply H5.
+      * (* 
+          pumping_constant re1 <= length s1 (The precondition of IH1)
+
+          { 
+            exists x'' y'' z'' s.t.
+            s1 = x'' ++ y'' ++ y'' /\
+            y'' != [ ] /\
+            length x'' + length y'' <= pumping_constant re1 /\
+            (forall m : nat, x'' ++ napp m y'' ++ z'' =~ re1)
+          }
+
+          Then the desired x y z could be (x‘') (y’') (z''++ s2). 
+      
+        *)
+        apply IH1 in E1. 
         destruct E1 as [x [y [z [E2 [E3 [E4 E5]]]]]].
         exists x. exists y. exists (z ++ s2).
-        split. rewrite E2. 
-        rewrite <- app_assoc with (l := x) (m := (y ++ z)) (n := s2).
-        rewrite <- app_assoc. reflexivity.
+        split. rewrite E2. rewrite <- app_assoc with (m := (y ++ z)). rewrite <- app_assoc. reflexivity.
         split. apply E3.
         split. apply le_plus_trans. apply E4.
-        intros m. rewrite app_assoc. rewrite app_assoc. 
-        rewrite <- app_assoc with (l := x) (m := napp m y) (n := z).
-        apply MApp. apply E5. apply Hmatch2.
-    - (* MMUnionL *) 
+        intros m. rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc with (m := napp m y). apply MApp. apply E5. apply Hmatch2.
+    - (* MMUnionL:  *) 
       simpl. intros H.
       apply plus_le in H.
       destruct H as [HL HR].
@@ -2281,47 +2342,83 @@ Proof.
       split. apply H2.
       split. apply le_plus_trans. apply H3.
       intros m. apply MUnionL. apply H4. 
-    - (* MUnionR *)
+    - (* MUnionR: same as weak pumping *)
       simpl. intros H.
       apply plus_le in H. 
       destruct H as [HL HR].
       apply IH in HR.
       destruct HR as [x [y [z [H1 [H2 [H3 H4]]]]]].
-      exists x. (* s1 *) 
-      exists y. (* s0 *)
-      exists z. (* s3 *)
+      exists x. exists y. exists z. 
       split. apply H1.
-      split. apply H2.
-      rewrite add_comm with (n := pumping_constant re1) (m := pumping_constant re2).
+      split. apply H2. rewrite add_comm with (n := pumping_constant re1).
       split. apply le_plus_trans. apply H3.
-      intros m.
-      apply MUnionR.
-      apply H4.
-    - (* MStar0 *)
+      intros m. apply MUnionR. apply H4.
+    - (* MStar0: same as weak pumping *)
       simpl. intros contra. inversion contra.
       apply pumping_constant_0_false in H0.
       inversion H0.
-    - (* MStarApp *)
+    - (* 
+        [MStarApp]
+
+        IH1: pumping_constant re <= length s1 ->
+        { 
+          exists x y z,
+          s1 = x ++ y ++ z /\
+          y <> [ ] /\
+          length x + length y <= pumping_constant re1 /\
+          (forall m : nat, x ++ napp m y ++ z =~ re)
+        }
+
+        IH2: pumping_constant (Star re) <= length s2 ->
+        { 
+          exists x y z,
+          s1 = x ++ y ++ z /\
+          y <> [ ] /\
+          length x + length y <= pumping_constant re2 /\
+          (forall m : nat, x ++ napp m y ++ z =~ Star re)
+        }
+
+        Prove that: pumping_constant (Star re) <= length (s1 ++ s2) ->
+        { 
+          exists x y z,
+          s1 ++ s2 = x ++ y ++ z /\
+          y <> [ ] /\
+          length x + length y <= pumping_constant re1 + pumping_constant re2 /\
+          (forall m : nat, x ++ napp m y ++ z =~ Star re)
+        }
+        
+      *)
       simpl. intros H.
       rewrite app_length in H.
       destruct s1 as [|x1 s1'].
-      + simpl in H. apply IH2. apply H.
-      + destruct (lt_ge_cases (length (x1 :: s1')) (pumping_constant re)) as [E1 | E1].
-        * exists []. exists (x1 :: s1'). exists s2.
+      + (*  s1 ++ s2 = [] ++ s2 = s2 *)
+        simpl in H. apply IH2. apply H.
+      + (* s1 = x1::s1' *) 
+        destruct (lt_ge_cases (length (x1 :: s1')) (pumping_constant re)) as [E1 | E1].
+        * (* 
+            length (x1 :: s1') < pumping_constant re
+
+            The desired x y z could be [] (x1::s1') s2.
+
+            Note that (x1 :: s1') <> [] trivially.
+          *)
+          exists []. exists (x1 :: s1'). exists s2.
           split. reflexivity.
           split. discriminate.
           split. simpl. simpl in E1. apply n_lt_m__n_le_m in E1. apply E1.
-          intros m. simpl. apply napp_star with (s1 := x1 :: s1') (s2 := s2).
-          apply Hmatch1. apply Hmatch2.
-        * apply IH1 in E1.
+          intros m. simpl. apply napp_star with (s1 := x1 :: s1'). apply Hmatch1. apply Hmatch2.
+        * (* 
+            pumping_constant re <= length (x1 :: s1')
+            same as weak pumping
+          *)
+          apply IH1 in E1.
           destruct E1 as [x [y [z [H1 [H2 [H3 H4]]]]]].
           exists x. exists y. exists (z ++ s2).
           split. rewrite H1. rewrite app_assoc. rewrite app_assoc. rewrite app_assoc. reflexivity.
           split. apply H2.
           split. apply H3.
-          intros m. rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc with (l := x) (m := napp m y) (n := z).
-          apply MStarApp with (s1 := x ++ napp m y ++ z) (re := re) (s2 := s2).
-          apply H4. apply Hmatch2.
+          intros m. rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc with (m := napp m y).
+          apply MStarApp with (s1 := x ++ napp m y ++ z). apply H4. apply Hmatch2.
 Qed.
 
 End Pumping.
@@ -2408,7 +2505,7 @@ Proof.
   - split. 
     + (* P -> true = true *)
       intros H'. reflexivity. 
-    + (* true = true -> P*)
+    + (* true = true -> P *)
       intros H'. apply H.
   - split.
     + (* P -> true = false *)
