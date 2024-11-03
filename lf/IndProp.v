@@ -3089,7 +3089,29 @@ Lemma star_ne : forall (a : ascii) s re,
   a :: s =~ Star re <->
   exists s0 s1, s = s0 ++ s1 /\ a :: s0 =~ re /\ s1 =~ Star re.
 Proof.
-Admitted.
+  intros. 
+  split.
+  - intros H. remember (Star re) as re'. remember (a :: s) as s'. induction H.
+    + discriminate Heqre'.
+    + inversion Heqre'.
+    + inversion Heqre'.
+    + inversion Heqre'.
+    + inversion Heqre'.
+    + inversion Heqs'.
+    + destruct s4.
+      * simpl in Heqs'. apply IHexp_match2. apply Heqre'. apply Heqs'.
+      * exists s4. exists s5. 
+        inversion Heqs'. inversion Heqre'.
+        split. reflexivity.
+        split. rewrite <- H2. rewrite <- H4. apply H.
+        rewrite <- H4. apply H0.
+  - intros H.
+    destruct H as [x [y [H1 [H2 H3]]]].
+    rewrite H1. 
+    assert (T: a :: x ++ y = (a :: x) ++ y). { reflexivity. }
+    rewrite T. apply MStarApp. apply H2. apply H3. 
+Qed.
+
 
 (** The definition of our regex matcher will include two fixpoint
     functions. The first function, given regex [re], will evaluate to a
@@ -3172,7 +3194,7 @@ Definition derives d := forall a re, is_der re a (d a re).
     regex's match the empty string. *)
 Fixpoint derive (a : ascii) (re : reg_exp ascii) : reg_exp ascii := match re with
 | EmptySet => EmptySet
-| EmptyStr => EmptyStr
+| EmptyStr => EmptySet
 | Char x => if eqb x a then EmptyStr else EmptySet
 | App re1 re2 => if match_eps re1 then Union (App (derive a re1) re2) (derive a re2) else (App (derive a re1) re2)
 | Union re1 re2 => Union (derive a re1) (derive a re2)
@@ -3245,7 +3267,7 @@ Proof. simpl. reflexivity. Qed.
     [Prop]'s naturally using [intro] and [destruct]. *)
 Lemma derive_corr : derives derive.
 Proof.
-  (* FILL IN HERE *) Admitted.
+Admitted.
 (** [] *)
 
 (** We'll define the regex matcher using [derive]. However, the only
@@ -3262,10 +3284,10 @@ Definition matches_regex m : Prop :=
 
     Complete the definition of [regex_match] so that it matches
     regexes. *)
-Fixpoint regex_match (s : string) (re : reg_exp ascii) : bool
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
-(** [] *)
-
+Fixpoint regex_match (s : string) (re : reg_exp ascii) : bool := match s with
+| [] => match_eps re  
+| c :: t => regex_match t (derive c re)
+end.
 (** **** Exercise: 3 stars, standard, optional (regex_match_correct)
 
     Finally, prove that [regex_match] in fact matches regexes.
@@ -3280,8 +3302,7 @@ Fixpoint regex_match (s : string) (re : reg_exp ascii) : bool
     [derive_corr] to [x] and [re] to prove that [x :: s =~ re] given
     [s =~ derive x re], and vice versa. *)
 Theorem regex_match_correct : matches_regex regex_match.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Admitted.
 (** [] *)
 
 (* 2024-08-25 14:45 *)
