@@ -503,8 +503,31 @@ Proof.
     Translate your solution for [add_comm] into an informal proof:
 
     Theorem: Addition is commutative.
-
-    Proof: (* FILL IN HERE *)
+    
+    For any [n], [m],
+      n + m = m + n
+    
+    _Proof_: By induction on [n].
+    - First, suppose [n = 0].  We must show that
+        0 + m = m + 0
+      We can firstly rewrite this as
+        m = m + 0
+      by definition of [+].
+      Then this follows directly from the proven result
+      "For any [m] , m + 0 = m".
+      - Next, suppose [n = S n'], where
+        n' + m = m + n'
+        We must now show that
+          (S n') + m = m + (S n')
+        We can rewrite this as
+          S (n' + m) = m + (S n')
+        by definition of [+].
+        We can furtherly rewrite the equation as
+          S (m + n') = m + (S n') ---- (1)
+        by the induction hypothesis.
+        Then (1) could be proven by the proven result
+        "For any [n] [m], S (n + m) = n + (S m)".
+      _Qed_.
 *)
 
 (* Do not modify the following line: *)
