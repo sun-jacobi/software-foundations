@@ -253,25 +253,29 @@ Inductive Perm3 {X : Type} : list X -> list X -> Prop :=
 
 Example Perm3_example1 : Perm3 [1;2;3] [2;3;1].
 Proof.
+  (* [[1;2;3]] -> [[2;1;3]] -> [[2;3;1]] *)
   apply perm3_trans with [2;1;3].
   - apply perm3_swap12.
   - apply perm3_swap23.   Qed.
 
-(* [[3;2;1]] -> [[2;3;1]] -> [[2;1;3]] -> [[1;2;3]] *)
+
 Example Perm3_example2 : Perm3 [3;2;1] [1;2;3].
-  Proof.
+Proof.
+  (* [[3;2;1]] -> [[2;3;1]] -> [[2;1;3]] -> [[1;2;3]] *)
     apply perm3_trans with [2;3;1].
     - apply perm3_swap12.
     - apply perm3_trans with [2;1;3].
       + apply perm3_swap23.
-      + apply perm3_swap12. Qed.
-    
-(* [[1;2;3]] -> [[1;3;2]] -> [[1;2;3]] *)
+      + apply perm3_swap12. 
+Qed.
+
 Example Perm3_example3 : Perm3 [1;2;3] [1;2;3].
-  Proof.
+Proof.
+  (* [[1;2;3]] -> [[1;3;2]] -> [[1;2;3]] *)
     apply perm3_trans with [1;3;2].
     - apply perm3_swap23.
-    - apply perm3_swap23. Qed.
+    - apply perm3_swap23. 
+Qed.
 
 (* ================================================================= *)
 (** ** Example: Evenness (yet again) *)
@@ -1247,15 +1251,34 @@ Theorem subseq_trans : forall (l1 l2 l3 : list nat),
   subseq l2 l3 ->
   subseq l1 l3.
 Proof.
-  intros.
+  (* 
+    Induction on E23: subseq l2 l3
+    
+    Prove: 
+      For all l1, subseq l1 l2 -> subseq l2 l3. 
+    (l1 should be generalized)
+  *)
+  intros l1 l2 l3 E12 E23.
   generalize dependent l1.
-  induction H0.
-  - intros. inversion H. apply s1.     
-  - intros. apply s2. apply IHsubseq. apply H.
-  - intros. inversion H.
+  induction E23.
+  - (*  l2 = [], l3 = l *)
+    intros. inversion E12. apply s1.     
+  - (*  
+      subseq l2 l3 -> (forall l : list nat, subseq l l2 -> subseq l l3)
+      Goal: subseq l2 l3 -> (forall l : list nat, subseq l l2 -> subseq l x::l3)
+    *)
+    intros. apply s2. apply IHE23. apply E12.
+  - (* 
+      subseq l2 l3 -> 
+      (forall l : list nat, subseq l l2 -> subseq l l3)
+      
+      Goal: subseq l2 l3 -> 
+      (forall l : list nat, subseq l x::l2 -> subseq l x::l3)
+    *)
+    intros. inversion E12.
     + apply s1. 
-    + apply s2. apply IHsubseq. apply H3.
-    + apply s3. apply IHsubseq. apply H3. 
+    + apply s2. apply IHE23. apply H1.
+    + apply s3. apply IHE23. apply H1. 
 Qed.
 
 (** **** Exercise: 2 stars, standard, optional (R_provability2)
@@ -1514,7 +1537,7 @@ Qed.
 Lemma empty_is_empty : forall T (s : list T),
   ~ (s =~ EmptySet).
 Proof.
-  intros T s. unfold not. intros H. inversion H.
+  intros T s contra. inversion contra.
 Qed.
 
 Lemma MUnion' : forall T (s : list T) (re1 re2 : reg_exp T),
@@ -1964,42 +1987,79 @@ Lemma weak_pumping : forall T (re : reg_exp T) s,
     were in an optional exercise earlier in this chapter may also be
     useful. *)
 Proof.
+  (* 
+    Induction on Hmatch: s =~ re
+  *)
   intros T re s Hmatch.
   induction Hmatch
     as [ | x | s1 re1 s2 re2 Hmatch1 IH1 Hmatch2 IH2
        | s1 re1 re2 Hmatch IH | re1 s2 re2 Hmatch IH
        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2 ].
   - (* 
-      MEmpty 
+      [MEmpty] 
+      s = []; re = EmptyStr.
+      Notice that length s = 0 and pumping_constant re = 1,
+      Contradiction.
     *)
     simpl. intros contra. inversion contra.
   
   - (* 
-      MChar
-      pumping_constant (Char x) == 2
-      length [x] == 1
-      2 <= 1
+      [MChar]
+      s = [x]; re = (Char x).
+      Notice that length [x] == 1 and pumping_constant Char = 2.
+      Contradiction.
     *)
     simpl. intros contra. inversion contra. inversion H0.
   - (*
-      MApp
+      [MApp]
+      
+      Hmatch1: s1 =~ re1
+      Hmatch2: s2 =~ re2
 
       IH1: For re1 and re2 s.t. 
-      pumping_constant re1 <= length s1 -> exists s2 s3 s4 s.t.
-        s1 = s2 ++ s3 ++ s4 /\
-        s3 != [ ] /\
-        (forall m : nat, s2 ++ napp m s3 ++ s4 =~ re1)
+      pumping_constant re1 <= length s1 -> 
+      { 
+        exists x y z s.t.
+        s1 = x ++ y ++ s4 /\
+        y != [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ re1)
+      }
       
-      IH2: pumping_constant re2 <= length s2 -> exists s1 s3 s4 s.t.
-        s2 = s1 ++ s3 ++ s4 /\
-        s3 !=  [ ] /\
-        (forall m : nat, s2 ++ napp m s3 ++ s4 =~ re1)
+      IH2: pumping_constant re2 <= length s2 -> 
+      { 
+        exists x y z s.t.
+        s2 = x ++ y ++ z /\
+        y !=  [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ re1)
+      }
 
-      Prove that: pumping_constant (App re1 re2) <= length s1 + length s2 
-        -> exists s0 s3 s4 s.t.
-        s1 ++ s2 = s0 ++ s3 ++ s4 /\
-        s3 != [ ] /\
-        (forall m : nat, s0 ++ napp m s3 ++ s4 =~ App re1 re2)
+      Prove that: pumping_constant (App re1 re2) <= length s1 + length s2 -> 
+      { 
+        exists x y z s.t.
+        s1 ++ s2 = x ++ y ++ z /\
+        y != [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ App re1 re2)
+      }
+
+      Proof Scratch: 
+      Note that pumping_constant (App re1 re2) = pumping_constant re1 + pumping_constant re2 
+          <= length s1 + length s2.
+      We can get pumping_constant re1 <= length s1 or pumping_constant re1 <= length s1.
+
+      i) pumping_constant re1 <= length s1
+      By IH1, we have 
+      { 
+        exists x y z s.t.
+        s1 = x ++ y ++ z /\
+        x != [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ re1)
+      }. 
+
+      naming the correspoinding list as x' y' z'.
+      
+      Then the desired x y z for s1 ++ s2 should be x' y' (z' ++ s2)
+
+      ii) Similar.
     *)
     simpl. intros H.
     rewrite app_length in H.
@@ -2013,92 +2073,130 @@ Proof.
           y != [ ] /\
           forall m : nat, x ++ napp m y ++ z =~ re1
         *)
-        exists x. (* s0 *)
-        exists y. (* s3 *)
-        exists (z ++ s2). (* s4 *)
-        split.
-        rewrite H2. rewrite <- app_assoc. rewrite <- app_assoc. reflexivity.
-        split.
-        apply H3.
+        exists x. exists y. exists (z++ s2).
+        split. rewrite H2. rewrite <- app_assoc. rewrite <- app_assoc. reflexivity.
+        split. apply H3.
         intros m. rewrite app_assoc. rewrite app_assoc. 
         rewrite <- app_assoc with (l := x) (m := napp m y) (n := z).
-        apply MApp with (s1 := (x ++ napp m y ++ z))
-                        (re1 := re1)
-                        (s2 := s2)
-                        (re2 := re2).
-        apply H4. apply Hmatch2.
-    + apply IH2 in H2. destruct H2 as [x [y [z [H1 [H3 H4]]]]].
+        apply MApp with (s1 := (x ++ napp m y ++ z)). apply H4. apply Hmatch2.
+    + (* pumping_constant re2 <= length s2 *)
+      apply IH2 in H2. destruct H2 as [x [y [z [H1 [H3 H4]]]]].
       exists (s1 ++ x). exists y. exists z.
       split. rewrite H1. rewrite <- app_assoc. reflexivity.
       split. apply H3.
-      intros m. 
-      rewrite <- app_assoc with (l := s1) (m := x) (n := napp m y ++ z).
-      apply MApp with (s1 := s1)
-                      (re1 := re1)
-                      (s2 := x ++ napp m y ++ z)
-                      (re2 := re2).
-      apply Hmatch1. apply H4.
+      intros m. rewrite <- app_assoc with (l := s1) (m := x) (n := napp m y ++ z).
+      apply MApp with (s2 := x ++ napp m y ++ z). apply Hmatch1. apply H4.
   - (*
-    MUnionL
+      [MUnionL]
     
     IH: pumping_constant re1 <= length s1 ->
-      exists s2 s3 s4 : list T,
-      s1 = s2 ++ s3 ++ s4 /\
-      s3 !=  [ ] /\
-      forall m : nat, s2 ++ napp m s3 ++ s4 =~ re1
+    { 
+      exists x y z: list T,
+      s1 = x ++ y ++ z /\
+      y !=  [ ] /\
+      forall m : nat, x ++ napp m y ++ z =~ re1
+    }
 
-    Prove that
-    
-    pumping_constant (Union re1 re2) <= length s1 ->
-      exists s0 s2 s3 : list T,
-      s1 = s0 ++ s2 ++ s3 /\
-      s2 <> [ ] /\
-      forall m : nat, s0 ++ napp m s2 ++ s3 =~ Union re1 re2)
+    Prove that: pumping_constant (Union re1 re2) <= length s1 ->
+    { 
+      exists x y z : list T,
+      s1 = x ++ y ++ z /\
+      y <> [ ] /\
+      forall m : nat, x ++ napp m y ++ z =~ Union re1 re2)
+    }
+
+    Proof Scratch: 
+      Note that pumping_constant (Union re1 re2) = pumping_constant re1 + pumping_constant re2 
+        <= length s1.
+      We can have pumping_constant re1 <= length s1.
+
+      Therefore 
+
+      { 
+        exists x y z: list T,
+        s1 = x ++ y ++ z /\
+        y !=  [ ] /\
+        forall m : nat, x ++ napp m y ++ z =~ re1
+      }
+
+      naming the correspoinding list as x' y' z'.
+
+      Then the desired x y z for s1 ++ s2 should be x' y' z'.
+      
     *)
     simpl. intros H.
     apply plus_le in H. 
     destruct H as [HL HR].
     apply IH in HL.
     destruct HL as [x [y [z [H1 [H2 H3]]]]].
-    exists x. (* s0 *) 
-    exists y. (* s2 *)
-    exists z. (* s3 *)
+    exists x. exists y. exists z.
     split. apply H1.
     split. apply H2.
-    intros m.
-    apply MUnionL. 
-    apply H3.
-  
-  - (* MUnionR *)
+    intros m. apply MUnionL. apply H3.
+  - (* [MUnionR] *)
     simpl. intros H.
     apply plus_le in H. 
     destruct H as [HL HR].
     apply IH in HR.
     destruct HR as [x [y [z [H1 [H2 H3]]]]].
-    exists x. (* s1 *) 
-    exists y. (* s0 *)
-    exists z. (* s3 *)
+    exists x. exists y.  exists z.
     split. apply H1.
     split. apply H2.
-    intros m.
-    apply MUnionR.
-    apply H3.
+    intros m. apply MUnionR. apply H3.
   - (*
-    MStar0
+      [MStar0]
+      
+      s = []; re = (Star re).
+      
+      length s = 0; pumping_constant (Star re) >= 1 ; 
+      Contradiction.
     *)
     simpl. intros contra. inversion contra.
     apply pumping_constant_0_false in H0.
     inversion H0.
   - (* 
-    MStarApp 
+      [MStarApp]
+      
+      IH1: pumping_constant re <= length s1 ->
+      { 
+        exists x y z,
+        s1 = x ++ y ++ z /\
+        y <> [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ re)
+      }
+
+      IH2: pumping_constant (Star re) <= length s2 ->
+      { 
+        exists x y z,
+        s1 = x ++ y ++ z /\
+        y <> [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ Star re)
+      }
+
+      Prove that: pumping_constant (Star re) <= length (s1 ++ s2) ->
+      { 
+        exists x y z,
+        s1 = x ++ y ++ z /\
+        y <> [ ] /\
+        (forall m : nat, x ++ napp m y ++ z =~ Star re)
+
+      Proof Scratch: 
+        Note that pumping_constant (Star re) <= length s1 + length s2.
+
+        i) s1 = []
+        pumping_constant (Star re) <= length s2. Then just use IH2.
+
+        ii) s1 = x1::s1'
+        Now s1 ++ s2 = [] ++ (x1::s1') ++ [s2].
+
+        By napp_star, x1 :: s1' =~ re and s2 =~ Star re,
+        we can get napp m (x1 :: s1') ++ s2 =~ Star re (The condition 3).
     *)
     simpl. intros H.
     rewrite app_length in H.
     destruct s1 as [|x1 s1'].
     + simpl in H. apply IH2. apply H.
-    + exists []. 
-      exists (x1 :: s1').
-      exists s2.
+    + exists []. exists (x1 :: s1'). exists s2.
       split. reflexivity.
       split. discriminate.
       simpl. intros m. apply napp_star with (s1 := x1 :: s1') (s2 := s2).
@@ -2120,7 +2218,6 @@ Lemma pumping : forall T (re : reg_exp T) s,
     s2 <> [] /\
     length s1 + length s2 <= pumping_constant re /\
     forall m, s1 ++ napp m s2 ++ s3 =~ re.
-
 Proof.
   intros T re s Hmatch.
   induction Hmatch
@@ -2129,12 +2226,7 @@ Proof.
        | re | s1 s2 re Hmatch1 IH1 Hmatch2 IH2 ].
   - (* MEmpty *)
     simpl. intros contra. inversion contra.
-  - (* 
-    MChar
-    pumping_constant (Char x) == 2
-    length [x] == 1
-    2 <= 1
-    *)
+  - (* MChar *)
     simpl. intros contra. inversion contra. inversion H0.
   - (* MApp *)
     simpl. intros H.
