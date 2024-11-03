@@ -3170,8 +3170,14 @@ Definition derives d := forall a re, is_der re a (d a re).
     Define [derive] so that it derives strings. One natural
     implementation uses [match_eps] in some cases to determine if key
     regex's match the empty string. *)
-Fixpoint derive (a : ascii) (re : reg_exp ascii) : reg_exp ascii
-  (* REPLACE THIS LINE WITH ":= _your_definition_ ." *). Admitted.
+Fixpoint derive (a : ascii) (re : reg_exp ascii) : reg_exp ascii := match re with
+| EmptySet => EmptySet
+| EmptyStr => EmptyStr
+| Char x => if eqb x a then EmptyStr else EmptySet
+| App re1 re2 => if match_eps re1 then Union (App (derive a re1) re2) (derive a re2) else (App (derive a re1) re2)
+| Union re1 re2 => Union (derive a re1) (derive a re2)
+| Star re => Star (derive a re)
+end.
 (** [] *)
 
 (** The [derive] function should pass the following tests. Each test
@@ -3184,45 +3190,37 @@ Example d := ascii_of_nat 100.
 
 (** "c" =~ EmptySet: *)
 Example test_der0 : match_eps (derive c (EmptySet)) = false.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "c" =~ Char c: *)
 Example test_der1 : match_eps (derive c (Char c)) = true.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "c" =~ Char d: *)
 Example test_der2 : match_eps (derive c (Char d)) = false.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "c" =~ App (Char c) EmptyStr: *)
 Example test_der3 : match_eps (derive c (App (Char c) EmptyStr)) = true.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "c" =~ App EmptyStr (Char c): *)
 Example test_der4 : match_eps (derive c (App EmptyStr (Char c))) = true.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "c" =~ Star c: *)
 Example test_der5 : match_eps (derive c (Star (Char c))) = true.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "cd" =~ App (Char c) (Char d): *)
 Example test_der6 :
   match_eps (derive d (derive c (App (Char c) (Char d)))) = true.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** "cd" =~ App (Char d) (Char c): *)
 Example test_der7 :
   match_eps (derive d (derive c (App (Char d) (Char c)))) = false.
-Proof.
-  (* FILL IN HERE *) Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** **** Exercise: 4 stars, standard, optional (derive_corr)
 
