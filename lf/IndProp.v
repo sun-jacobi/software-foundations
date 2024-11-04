@@ -395,7 +395,7 @@ Qed.
 Theorem ev_double : forall n,
   ev (double n).
 Proof.
-  intros n. induction n as [| n' IHn'].
+  intros n. induction n as [|n' IHn'].
     - (* n = 0 *) simpl. apply ev_0.
     - (* n = S n' *) simpl. apply ev_SS. apply IHn'.
 Qed.
@@ -887,7 +887,7 @@ Qed.
 (** **** Exercise: 5 stars, standard, optional (le_and_lt_facts) *)
 Lemma le_trans : forall m n o, m <= n -> n <= o -> m <= o.
 Proof.
-  intros m n o E0 E1. induction E1 as [|o' E1' IH].
+  intros m n o E0 E1. induction E1 as [|o' E1' IHE1].
   + apply E0.
   + apply le_S. apply IH.
 Qed.
@@ -3302,7 +3302,20 @@ end.
     [derive_corr] to [x] and [re] to prove that [x :: s =~ re] given
     [s =~ derive x re], and vice versa. *)
 Theorem regex_match_correct : matches_regex regex_match.
-Admitted.
+Proof.
+  unfold matches_regex.
+  intros s. induction s.
+  - simpl. apply match_eps_refl.
+  - simpl. intros re. apply iff_reflect. split.
+    + intros H. apply derive_corr in H.
+      apply reflect_iff with (P:= s =~ (derive x re)) in IHs.
+      destruct IHs as [IHsL IHsR].
+      apply IHsL in H . apply H.
+    + intros H. apply derive_corr.
+      apply reflect_iff with (P:= s =~ (derive x re)) in IHs.
+      destruct IHs as [IHsL IHsR].
+      apply IHsR in H. apply H.
+Qed.
 (** [] *)
 
 (* 2024-08-25 14:45 *)
