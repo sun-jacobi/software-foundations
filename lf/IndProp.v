@@ -3198,7 +3198,7 @@ Fixpoint derive (a : ascii) (re : reg_exp ascii) : reg_exp ascii := match re wit
 | Char x => if eqb x a then EmptyStr else EmptySet
 | App re1 re2 => if match_eps re1 then Union (App (derive a re1) re2) (derive a re2) else (App (derive a re1) re2)
 | Union re1 re2 => Union (derive a re1) (derive a re2)
-| Star re => Star (derive a re)
+| Star re => App (derive a re) (Star re)
 end.
 (** [] *)
 
@@ -3267,7 +3267,53 @@ Proof. simpl. reflexivity. Qed.
     [Prop]'s naturally using [intro] and [destruct]. *)
 Lemma derive_corr : derives derive.
 Proof.
-Admitted.
+  unfold derives. unfold is_der. intros. split. 
+  - intros H.
+    generalize dependent s.
+    induction re.
+    + intros. inversion H.
+    + intros. inversion H.
+    + intros. inversion H. simpl. rewrite eqb_refl. apply MEmpty.
+    + intros. inversion H. destruct s4. 
+      * simpl in H1. rewrite H1 in H4. apply IHre2 in H4.
+        simpl. destruct (match_eps_refl re1) as [E | E].
+          ** apply MUnionR. apply H4.
+          ** apply E in H3. inversion H3.
+      * simpl in H1. simpl. destruct (match_eps_refl re1) as [E | E].
+          ** inversion H1. apply MUnionL. apply MApp.
+              rewrite H6 in H3. apply IHre1 in H3. apply H3. apply H4.
+          ** inversion H1. apply MApp. 
+              rewrite H6 in H3. apply IHre1 in H3. apply H3. apply H4.
+    + intros. apply union_disj in H. destruct H as [H1 | H2].
+      * simpl. apply MUnionL. apply IHre1 in H1. apply H1.
+      * simpl. apply MUnionR. apply IHre2 in H2. apply H2.
+    + intros. apply star_ne in H. destruct H as [s0 [s1 [H1 [H2 H3]]]].
+      simpl. apply IHre in H2. rewrite H1. apply MApp. apply H2. apply H3.
+  - intros H.
+    generalize dependent s.
+    induction re.
+    + intros. inversion H.
+    + intros. inversion H.
+    + intros. destruct (eqb t a) eqn:E.
+      * simpl in H. rewrite E in H. inversion H. apply eqb_eq in E. rewrite E. apply MChar.
+      * simpl in H. rewrite E in H. inversion H.
+    + intros. simpl in H. destruct (match_eps_refl re1) as [E | E].
+      * apply union_disj in H. destruct H as [HL | HR].
+        ** apply app_exists in HL. destruct HL as [s0 [s1 [HL1 [HL2 HL3]]]].
+           apply IHre1 in HL2. rewrite HL1. assert (T: a :: s0 ++ s1 = (a :: s0) ++ s1). { reflexivity. }
+           rewrite T. apply MApp. apply HL2. apply HL3.
+        ** apply IHre2 in HR. apply MApp with (s1 := []) (s2 := (a :: s)). apply E. apply HR.
+      * apply app_exists in H. destruct H as [s0 [s1 [H1 [H2 H3]]]].
+        apply app_ne. right. exists s0. exists s1. 
+        split. apply H1.
+        split. apply IHre1 in H2. apply H2. apply H3.
+    + intros. simpl in H. apply union_disj in H. destruct H as [HL | HR].
+      * apply IHre1 in HL. apply MUnionL. apply HL.
+      * apply IHre2 in HR. apply MUnionR. apply HR.
+    + intros. simpl in H. apply app_exists in H. destruct H as [s0 [s1 [H1 [H2 H3]]]].
+      rewrite H1. assert (T: a :: s0 ++ s1 = (a :: s0) ++ s1). { reflexivity. } rewrite T.
+       
+
 (** [] *)
 
 (** We'll define the regex matcher using [derive]. However, the only
