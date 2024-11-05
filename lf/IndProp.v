@@ -889,7 +889,7 @@ Lemma le_trans : forall m n o, m <= n -> n <= o -> m <= o.
 Proof.
   intros m n o E0 E1. induction E1 as [|o' E1' IHE1].
   + apply E0.
-  + apply le_S. apply IH.
+  + apply le_S. apply IHE1.
 Qed.
 
 Theorem O_le_n : forall n,
