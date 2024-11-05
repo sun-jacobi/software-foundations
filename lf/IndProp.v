@@ -3312,8 +3312,8 @@ Proof.
       * apply IHre2 in HR. apply MUnionR. apply HR.
     + intros. simpl in H. apply app_exists in H. destruct H as [s0 [s1 [H1 [H2 H3]]]].
       rewrite H1. assert (T: a :: s0 ++ s1 = (a :: s0) ++ s1). { reflexivity. } rewrite T.
-       
-
+      apply MStarApp. apply IHre in H2. apply H2. apply H3.
+Qed. 
 (** [] *)
 
 (** We'll define the regex matcher using [derive]. However, the only
